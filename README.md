@@ -1,0 +1,2 @@
+# aws_budget_notify
+awsから定期的にSlackに利用料金を通知するアプリケーション
