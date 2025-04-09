@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Notify Slack every day of AWS billing
+
+Globals:
+  Function:
+    Timeout: 10
+
+Parameters:
+  SlackWebhookUrl:
+    Type: String
+    Description: Slack Webhook URL for sending billing alerts
+
+Resources:
+  BillingIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "NotifySlackToBillingLambdaPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                  - "ce:GetCostAndUsage"
+                Resource: "*"
+
+  MyCustomFunctionName:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: "NotifyCostFunction"
+      CodeUri: hello_world/
+      Handler: app.lambda_handler
+      Runtime: python3.9  # 最新のバージョンに修正
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+      Role: !GetAtt BillingIamRole.Arn
+      Events:
+        NotifySlack:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(0 0 ? * 2-6 *)"  # 平日AM9時に毎日通知
+
+Outputs:
+  MyCustomFunctionName:
+    Description: "NotifyCostFunction Lambda Function ARN"
+    Value: !GetAtt MyCustomFunctionName.Arn
+
+  MyCustomFunctionIamRole:
+    Description: "Implicit IAM Role created for NotifyCostFunction function"
+    Value: !GetAtt BillingIamRole.Arn
